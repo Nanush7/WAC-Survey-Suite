@@ -42,7 +42,7 @@ class LogWrapper:
 
     def lverbose(self, debug_text):
         """Log verbose messages"""
-        if self.debug:
+        if self.verbose:
             self.logger.debug(debug_text)
 
 

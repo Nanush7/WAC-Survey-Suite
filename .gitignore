@@ -130,3 +130,5 @@ dmypy.json
 
 # Other
 .vscode
+*.csv
+token_list.txt
