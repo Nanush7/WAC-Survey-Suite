@@ -18,7 +18,8 @@ class LogWrapper:
         self.logger = logging.getLogger('main_logger')
         self.logger.setLevel(logging.DEBUG)
 
-        formatter = logging.Formatter('[%(module)s][%(levelname)s] %(message)s')
+        formatter = logging.Formatter(
+            '[%(module)s][%(levelname)s] %(message)s')
 
         if self.enabled:
             # File Handler.
@@ -40,24 +41,20 @@ class LogWrapper:
         else:
             self.logger.disabled = True
 
-
     def lverbose(self, debug_text):
         """Log verbose messages"""
         if self.verbose:
             self.logger.debug(debug_text)
-
 
     def linfo(self, info_text):
         """Log execution information."""
         if not self.quiet:
             self.logger.info(info_text)
 
-
     def lwarn(self, warning):
         """Log warnings."""
         if self.warn:
             self.logger.warning(warning)
-
 
     def lerr(self, message):
         """Log errors."""

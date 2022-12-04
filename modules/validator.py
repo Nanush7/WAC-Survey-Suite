@@ -6,12 +6,13 @@ import pandas
 from time import sleep
 from sys import exit as sysexit
 
+
 class Validator:
     """
     Main class
     """
 
-    WCA_TOKEN_FIELD='WCA_token'
+    WCA_TOKEN_FIELD = 'WCA_token'
     MAX_COLUMNS = 100
 
     def __init__(self, arguments, logger) -> None:
@@ -22,14 +23,14 @@ class Validator:
         self.output_path = arguments.output_file
         self.dry_run = arguments.dry_run
 
-
     def run(self):
         self.logger.lverbose('Opening files...')
 
         # Survey responses.
         try:
-            # All the data will be a string to avoid Pandas adding floating points.
-            self.dataframe = pandas.read_csv(self.input_path, converters={i: str for i in range(self.MAX_COLUMNS)})
+            #  All the data will be a string to avoid Pandas adding floating points.
+            self.dataframe = pandas.read_csv(self.input_path, converters={
+                                             i: str for i in range(self.MAX_COLUMNS)})
         except FileNotFoundError:
             self.logger.lerr('Survey file not found.')
             sysexit(1)
@@ -83,7 +84,6 @@ class Validator:
             with open(self.output_path, 'w') as f:
                 f.write(content)
 
-
     def check_unique(self, token: str, start_index) -> bool:
         """
         Check if the token is repeated.
@@ -91,13 +91,11 @@ class Validator:
         duplicate = self.dataframe[self.WCA_TOKEN_FIELD].iloc[start_index+1:].eq(token)
         return not duplicate.any()
 
-
     def check_valid(self, token: str) -> bool:
         """
         Check if the token is valid.
         """
         return token in self.token_list
-
 
     def _delete(self, index) -> None:
         """
