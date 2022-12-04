@@ -45,7 +45,7 @@ class Validator:
 
         self.logger.linfo('Validating responses...')
         for index, row in self.dataframe.iloc[1:].iterrows():
-            token = row[self.WCA_TOKEN_FIELD]
+            token = row[self.WCA_TOKEN_FIELD].strip()
 
             # Check if the token was already found as repeated.
             if token in repeated_tokens:
@@ -54,7 +54,7 @@ class Validator:
                 continue
 
             # Check if the token is valid.
-            if not self.check_valid(token):
+            if not self.check_valid(token) or not token:
                 self.logger.lwarn(f'#{index} >> Invalid token')
                 self._delete(index)
                 continue
