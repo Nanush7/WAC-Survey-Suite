@@ -1,9 +1,8 @@
 """
 Survey response validator.
 """
-from re import sub
 import pandas
-from time import sleep
+from re import sub
 from sys import exit as sysexit
 
 
