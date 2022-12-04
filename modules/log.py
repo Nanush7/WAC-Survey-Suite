@@ -7,10 +7,11 @@ class LogWrapper:
 
     def __init__(self, config={}, enabled=True):
 
-        self.info = config.get("info", True)
-        self.verbose = config.get("verbose", False)
-        self.file = config.get("file", False)
-        self.colors = config.get("colors", True)
+        self.quiet = config.get('quiet', False)
+        self.warn = not config.get('no_warn', False)
+        self.verbose = config.get('verbose', False)
+        self.file = config.get('file', False)
+        self.colors = config.get('colors', True)
         self.enabled = enabled
 
         # Get new logger.
@@ -48,13 +49,14 @@ class LogWrapper:
 
     def linfo(self, info_text):
         """Log execution information."""
-        if self.info:
+        if not self.quiet:
             self.logger.info(info_text)
 
 
     def lwarn(self, warning):
         """Log warnings."""
-        self.logger.warning(warning)
+        if self.warn:
+            self.logger.warning(warning)
 
 
     def lerr(self, message):

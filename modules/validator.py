@@ -1,9 +1,9 @@
 """
 Survey response validator.
 """
-import csv
-from os import devnull
-from tqdm import tqdm
+from re import sub
+import pandas
+from time import sleep
 from sys import exit as sysexit
 
 class Validator:
@@ -12,17 +12,15 @@ class Validator:
     """
 
     WCA_TOKEN_FIELD='WCA_token'
+    MAX_COLUMNS = 100
 
     def __init__(self, arguments, logger) -> None:
         self.logger = logger
-        if arguments.dry_run:
-            self.input_path = devnull
-        else:
-            self.input_path = arguments.input_file
         self.input_path = arguments.input_file
         self.tokens_path = arguments.tokens
-        self.output_path = arguments.output_file
         self.token_list = []
+        self.output_path = arguments.output_file
+        self.dry_run = arguments.dry_run
 
 
     def run(self):
@@ -30,72 +28,80 @@ class Validator:
 
         # Survey responses.
         try:
-            input_file = open(self.input_path, 'r', newline='')
+            # All the data will be a string to avoid Pandas adding floating points.
+            self.dataframe = pandas.read_csv(self.input_path, converters={i: str for i in range(self.MAX_COLUMNS)})
         except FileNotFoundError:
             self.logger.lerr('Survey file not found.')
             sysexit(1)
-
-        reader = csv.DictReader(input_file)
-        self.data_as_str = input_file.read()
 
         # Tokens.
         with open(self.tokens_path, 'r') as f:
             self.token_list = f.read().split('\n')
 
-        # Validated file.
-        output_file = open(self.output_path, 'w')
-        writer = csv.writer(output_file)
-
-        # Copy meta fields to the new file.
-        writer.writerows([next(reader), next(reader)])
-
         # Start validation.
         repeated_tokens = []
+        self.total_responses = len(self.dataframe) - 1
+        self.deleted = 0
 
         self.logger.linfo('Validating responses...')
-        for response in tqdm(reader):
-            token = response[self.WCA_TOKEN_FIELD]
+        for index, row in self.dataframe.iloc[1:].iterrows():
+            token = row[self.WCA_TOKEN_FIELD]
 
             # Check if the token was already found as repeated.
             if token in repeated_tokens:
-                self.logger.lwarn(f'#{reader.line_num} >> Token repeated.')
+                self.logger.lwarn(f'#{index} >> Token repeated')
+                self._delete(index)
                 continue
 
             # Check if the token is valid.
             if not self.check_valid(token):
-                self.logger.lwarn(f'#{reader.line_num} >> Invalid token.')
+                self.logger.lwarn(f'#{index} >> Invalid token')
+                self._delete(index)
                 continue
 
             # Check if the token is repeated.
-            if self.check_unique(token, reader):
-                self.logger.lwarn(f'#{reader.line_num} >> Token repeated << {token}.')
+            if not self.check_unique(token, index):
+                self.logger.lwarn(f'#{index} >> Token repeated << {token}')
                 repeated_tokens.append(token)
+                self._delete(index)
                 continue
 
-            self.logger.lverbose(f'#{reader.line_num} >> OK.')
-            writer.writerow(response)
+            self.logger.lverbose(f'#{index} >> OK')
 
-        input_file.close()
-        output_file.close()
+        if not self.dry_run:
+            # Pandas adds "Unnamed: .." to columns without a name.
+            # We have to remove that.
+            self.dataframe.to_csv(self.output_path, sep=',', index=False)
+            # Fix the headers.
+            self.logger.linfo('Fixing headers...')
+            with open(self.output_path, 'r') as f:
+                content = f.read()
+
+            content = sub(r'(Unnamed: )+[0-9]*[0-9]*[0-9]', '', content)
+
+            # Write fixed content.
+            with open(self.output_path, 'w') as f:
+                f.write(content)
 
 
-    def check_unique(self, token: str, csv_reader) -> bool:
+    def check_unique(self, token: str, start_index) -> bool:
         """
         Check if the token is repeated.
         """
-        # occurrences = self.data_as_str.count(token)
-        # return occurrences > 1
-        count = 0
-        for row in csv_reader:
-            # FIXME: Debug.
-            print(row)
-            if row[self.WCA_TOKEN_FIELD] == token:
-                count += 1
+        duplicate = self.dataframe[self.WCA_TOKEN_FIELD].iloc[start_index+1:].eq(token)
+        return not duplicate.any()
 
-        return count > 1
 
     def check_valid(self, token: str) -> bool:
         """
         Check if the token is valid.
         """
         return token in self.token_list
+
+
+    def _delete(self, index) -> None:
+        """
+        Delete dataframe row.
+        """
+        self.dataframe.drop(index, inplace=True)
+        self.deleted += 1
