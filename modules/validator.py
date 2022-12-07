@@ -11,7 +11,7 @@ class Validator:
     Main class
     """
 
-    WCA_TOKEN_FIELD = 'WCA_token'
+    WCA_TOKEN_FIELD = 'wca_token'
     MAX_COLUMNS = 100
 
     def __init__(self, arguments, logger) -> None:
