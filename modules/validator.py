@@ -1,9 +1,11 @@
 """
 Survey response validator.
 """
-import pandas
-from re import sub
 from sys import exit as sysexit
+
+import pandas
+
+import format
 
 
 class Validator:
@@ -12,7 +14,7 @@ class Validator:
     """
 
     WCA_TOKEN_FIELD = 'wca_token'
-    MAX_COLUMNS = 100
+    MAX_COLUMNS = 200
 
     def __init__(self, arguments, logger) -> None:
         self.logger = logger
@@ -27,9 +29,12 @@ class Validator:
 
         # Survey responses.
         try:
-            #  All the data will be a string to avoid Pandas adding floating points.
-            self.dataframe = pandas.read_csv(self.input_path, converters={
+            # All the data will be a string to avoid Pandas adding floating points.
+            self.df = pandas.read_csv(self.input_path, converters={
                                              i: str for i in range(self.MAX_COLUMNS)})
+
+            # Some random tokens will be in an incorrect column, fix below.
+            self.df = format.fix_token_columns(self.df)
         except FileNotFoundError:
             self.logger.lerr('Survey file not found.')
             sysexit(1)
@@ -40,11 +45,11 @@ class Validator:
 
         # Start validation.
         repeated_tokens = []
-        self.total_responses = len(self.dataframe) - 1
+        self.total_responses = len(self.df) - 1
         self.deleted = 0
 
         self.logger.linfo('Validating responses...')
-        for index, row in self.dataframe.iloc[1:].iterrows():
+        for index, row in self.df.iloc[1:].iterrows():
             token = row[self.WCA_TOKEN_FIELD].strip()
 
             # Check if the token was already found as repeated.
@@ -60,7 +65,7 @@ class Validator:
                 continue
 
             # Check if the token is repeated.
-            if not self.check_unique(token, index):
+            if not self.find_matching_tokens(token, index):
                 self.logger.lwarn(f'#{index} >> Token repeated << {token}')
                 repeated_tokens.append(token)
                 self._delete(index)
@@ -69,26 +74,20 @@ class Validator:
             self.logger.lverbose(f'#{index} >> OK')
 
         if not self.dry_run:
+            # Write data to csv file.
+            self.df.to_csv(self.output_path, sep=',', index=False)
+
             # Pandas adds "Unnamed: .." to columns without a name.
             # We have to remove that.
-            self.dataframe.to_csv(self.output_path, sep=',', index=False)
-            # Fix the headers.
             self.logger.linfo('Fixing headers...')
-            with open(self.output_path, 'r') as f:
-                content = f.read()
+            format.fix_headers(self.output_path)
 
-            content = sub(r'(Unnamed: )+[0-9]*[0-9]*[0-9]', '', content)
-
-            # Write fixed content.
-            with open(self.output_path, 'w') as f:
-                f.write(content)
-
-    def check_unique(self, token: str, start_index) -> bool:
+    def find_matching_tokens(self, token: str, start_index) -> list[int]:
         """
         Check if the token is repeated.
         """
-        duplicate = self.dataframe[self.WCA_TOKEN_FIELD].iloc[start_index+1:].eq(token)
-        return not duplicate.any()
+        duplicates = self.df.index[self.WCA_TOKEN_FIELD].iloc[start_index + 1:].eq(token)
+        return duplicates
 
     def check_valid(self, token: str) -> bool:
         """
@@ -96,9 +95,14 @@ class Validator:
         """
         return token in self.token_list
 
+    def delete_oldest_repeated(self) -> None:
+        """
+        Take all the repeated tokens and delete all but the
+        """
+
     def _delete(self, index) -> None:
         """
         Delete dataframe row.
         """
-        self.dataframe.drop(index, inplace=True)
+        self.df.drop(index, inplace=True)
         self.deleted += 1
