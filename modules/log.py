@@ -7,9 +7,9 @@ class LogWrapper:
 
     def __init__(self, config={}, enabled=True):
 
-        self.quiet = config.get('quiet', False)
-        self.warn = not config.get('no_warn', False)
         self.verbose = config.get('verbose', False)
+        self.quiet = config.get('quiet', False)
+        self.warn = not config.get('no_warn', not self.verbose)
         self.file = config.get('file', False)
         self.colors = config.get('colors', True)
         self.enabled = enabled
