@@ -25,6 +25,7 @@ class Validator:
         self.token_list = []
         self.output_path = arguments.output_file
         self.dry_run = arguments.dry_run
+        self.list_only = arguments.list_only
         self.total_responses = -1
         self.deleted = 0
 
@@ -52,7 +53,7 @@ class Validator:
         # Delete responses with duplicated tokens.
         self.logger.linfo('Removing responses with duplicated tokens...')
         previous_amount = len(self.df)
-        self.delete_older_duplicates()
+        self.delete_older_duplicates(self.list_only)
         new_amount = len(self.df)
         duplicates_deleted = previous_amount - new_amount
         self.deleted += duplicates_deleted
@@ -76,7 +77,7 @@ class Validator:
 
             self.logger.lverbose(f'#{index} >> OK')
 
-        if not self.dry_run:  # TODO: lista de índices a eliminar.
+        if not self.dry_run:
             # Remove bad_token_column from dataframe.
             if not self.df[bad_token_column].empty:
                 self.logger.lerr('bad_token_column is not empty. Dropping anyway...')
@@ -96,10 +97,15 @@ class Validator:
         """
         return token in self.token_list
 
-    def delete_older_duplicates(self) -> None:
+    def delete_older_duplicates(self, list_only: bool = False) -> pandas.Series | None:
         """
-        Take all the repeated tokens and delete all, except the newest one.
+        Take all the repeated tokens and delete all (or list), except the newest one.
+
+        :returns: DataFrame with the responses to delete or None if responses where deleted in place.
         """
+        if list_only:
+            duplicates = self.df.duplicated(subset=[self.WCA_TOKEN_FIELD], keep='first')
+            return duplicates  # TODO: Terminar acá.
         self.df.drop_duplicates(subset=[self.WCA_TOKEN_FIELD], keep='first', ignore_index=False, inplace=True)
 
     def _delete(self, index: int) -> None:

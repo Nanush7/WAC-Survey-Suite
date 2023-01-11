@@ -23,10 +23,10 @@ def main():
     general.add_argument('-l',
                          help='Generate a list of responses to delete, instead of generating a validated CSV file.',
                          action='store_true',
-                         dest='to_delete_list')  # TODO.
+                         dest='list_only')
 
     log.add_argument(
-        '-q', '--quiet', help='Do not log anything', action='store_true')
+        '-q', '--quiet', help='Do not log anything', action='store_false')
     log.add_argument('--no-warn', help='Do not show warnings',
                      action='store_true', dest='no_warn')
     log.add_argument('-v', '--verbose',
@@ -42,7 +42,7 @@ def main():
     if args.quiet and args.verbose:
         parser.error('Cannot use quiet and verbose at the same time.')
 
-    if args.to_delete_list and args.output_file:
+    if args.list_only and args.output_file:
         parser.error('Cannot use -o and -l at the same time.')
 
     # Log options.
@@ -52,7 +52,7 @@ def main():
         'file': args.log_file,
         'colors': args.no_colors
     }
-    logger = LogWrapper(log_config, not args.quiet)
+    logger = LogWrapper(log_config, args.quiet)
 
     validator_class = Validator(args, logger)
     validator_class.run()
