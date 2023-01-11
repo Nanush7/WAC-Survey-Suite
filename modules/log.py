@@ -5,13 +5,13 @@ from colorama import Fore, Back
 class LogWrapper:
     """Logging wrapper class"""
 
-    def __init__(self, config={}, enabled=True):
+    def __init__(self, config={}, quiet=False):
 
         self.verbose = config.get('verbose', False)
         self.warn = not config.get('no_warn', not self.verbose)
         self.file = config.get('file', False)
         self.colors = config.get('colors', True)
-        self.enabled = enabled
+        self.enabled = not quiet
 
         # Get new logger.
         self.logger = logging.getLogger('main_logger')
