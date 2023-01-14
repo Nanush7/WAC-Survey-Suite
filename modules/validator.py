@@ -27,7 +27,7 @@ class Validator:
         self.list_only = arguments.list_only
         self.total_responses = -1
         self.deleted = 0
-        self.to_delete = pandas.Series(name='Respondent ID', dtype='U')
+        self.to_delete = []
 
     def run(self, input_path: str, output_path: str):
         self.logger.lverbose('Opening files...')
@@ -59,6 +59,9 @@ class Validator:
         """
         The script will run in deletion mode. A clean copy of the CSV file will be generated.
         """
+        self.logger.linfo('Fixing columns...')
+        self.fix_token_position()
+
         # Delete responses with duplicated tokens.
         self.logger.linfo('Checking responses with duplicated tokens...')
         previous_amount = len(self.df)
@@ -72,11 +75,6 @@ class Validator:
 
         for index, row in self.df.iloc[1:].iterrows():
             token = row[self.WCA_TOKEN_FIELD].strip()
-
-            # Fix tokens placed in an incorrect column.
-            if not token and len(row[self.bad_token_column]) == self.WCA_TOKEN_LEN:
-                token = row[self.bad_token_column].strip()
-                row[self.WCA_TOKEN_FIELD] = token
 
             # Delete responses with invalid tokens.
             if not self.is_valid(token) or not token:
@@ -97,48 +95,49 @@ class Validator:
 
             # Pandas adds "Unnamed: ..." to columns without a name.
             # We have to remove that.
-            self.logger.linfo('Fixing header...')
+            self.logger.linfo('Fixing headers...')
             Validator.fix_headers(output_path)
 
     def run_list(self, output_path):
         """
         The script will run in list mode. A list of responses to delete will be generated.
         """
+        self.logger.linfo('Fixing columns...')
+        self.fix_token_position()
+
         # List responses with duplicated tokens.
         self.logger.linfo('Checking responses with duplicated tokens...')
         duplicates = self.delete_older_duplicates(True)
-        duplicates_deleted = len(duplicates)
-        self.logger.linfo(f'Found {duplicates_deleted} duplicates.')
-
-        # Append to to_delete pandas series.
-        self.to_delete.append(self.df[duplicates][self.ID_FIELD])
+        self.to_delete = self.df[duplicates][self.ID_FIELD].to_list()
+        self.logger.linfo(f'Found {len(self.to_delete)} duplicates.')
 
         self.logger.linfo('Validating responses...')
 
         for index, row in self.df.iloc[1:].iterrows():
             token = row[self.WCA_TOKEN_FIELD].strip()
 
-            # Fix tokens placed in an incorrect column.
-            if not token and len(row[self.bad_token_column]) == self.WCA_TOKEN_LEN:
-                token = row[self.bad_token_column].strip()
-                row[self.WCA_TOKEN_FIELD] = token
-
             # Check responses with invalid tokens.
             if not self.is_valid(token) or not token:
-                self.logger.linfo(f'#{index} >> Invalid token')
-                self.to_delete.append(self.df.iloc[index][self.ID_FIELD])  # FIXME.
+                if token:
+                    self.logger.linfo(f'#{index} >> Invalid token')
+                self.to_delete.append(self.df[self.ID_FIELD].iloc[index])
                 continue
 
             self.logger.lverbose(f'#{index} >> OK')
 
         # Check bad_token_column.
         if not self.df[self.bad_token_column].empty:
-            self.logger.lwarn('bad_token_column is not empty. Dropping anyway...')
+            self.logger.lwarn('bad_token_column is not empty.')
+
+        # Empty token fields are detected as duplicates and invalid tokens.
+        # Remove the duplicates.
+        clean_to_delete = [elem for index, elem in enumerate(self.to_delete) if not elem in self.to_delete[:index]]
 
         with open(output_path, 'w') as f:
-            self.to_delete.to_string(buf=f, dtype='U')
+            for elem in clean_to_delete:
+                f.write(elem + '\n')
 
-        self.deleted = len(self.to_delete)
+        self.deleted = len(clean_to_delete)
 
     def is_valid(self, token: str) -> bool:  # TODO: Eliminar acá.
         """
@@ -156,6 +155,15 @@ class Validator:
             duplicates = self.df.duplicated(subset=[self.WCA_TOKEN_FIELD], keep='first')
             return duplicates
         self.df.drop_duplicates(subset=[self.WCA_TOKEN_FIELD], keep='first', ignore_index=False, inplace=True)
+
+    def fix_token_position(self):
+        """
+        Fix tokens placed in an incorrect column.
+        """
+        for index, row in self.df.iloc[1:].iterrows():
+            token = row[self.WCA_TOKEN_FIELD].strip()
+            if not token and len(row[self.bad_token_column]) == self.WCA_TOKEN_LEN:
+                row[self.WCA_TOKEN_FIELD] = row[self.bad_token_column].strip()
 
     def _delete(self, index: int) -> None:
         """
