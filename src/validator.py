@@ -1,5 +1,5 @@
 """
-Survey response validator.
+Copyright (c) 2022-2023 Nanush7. MIT license, see LICENSE file.
 """
 from re import sub
 from sys import exit as sysexit
@@ -17,17 +17,18 @@ class Validator:
     WCA_TOKEN_LEN = 64
     DATE_FIELD = 'Start Date'
     # DATE_FORMAT = '%m/%d/%Y %I:%M:%S %p'
-    MAX_COLUMNS = 400
+    MAX_COLUMNS = 400  # FIXME.
 
     def __init__(self, arguments, logger) -> None:
         self.logger = logger
         self.tokens_path = arguments.tokens
         self.token_list = []
-        self.dry_run = arguments.dry_run
         self.list_only = arguments.list_only
         self.total_responses = -1
         self.deleted = 0
         self.to_delete = []
+        self.df: pandas.DataFrame
+        self.bad_token_column: str
 
     def run(self, input_path: str, output_path: str):
         self.logger.lverbose('Opening files...')
@@ -47,7 +48,8 @@ class Validator:
 
         self.total_responses = len(self.df) - 1
         self.bad_token_column = self.df.columns[-1]
-        # FIXME: Agregar if not bad_token_column = 'Unnamed' para no corregir.
+        if 'Unnamed' not in self.bad_token_column:
+            self.bad_token_column = None
 
         # Run chosen method.
         if self.list_only:
@@ -60,7 +62,8 @@ class Validator:
         The script will run in deletion mode. A clean copy of the CSV file will be generated.
         """
         self.logger.linfo('Fixing columns...')
-        self.fix_token_position()
+        if self.bad_token_column:
+            self.fix_token_position()
 
         # Delete responses with duplicated tokens.
         self.logger.linfo('Checking responses with duplicated tokens...')
@@ -84,26 +87,27 @@ class Validator:
 
             self.logger.lverbose(f'#{index} >> OK')
 
-        if not self.dry_run:
-            # Remove bad_token_column from dataframe.
+        # Remove bad_token_column from dataframe.
+        if self.bad_token_column:
             if not self.df[self.bad_token_column].empty:
                 self.logger.lwarn('bad_token_column is not empty. Dropping anyway...')
             self.df.drop([self.bad_token_column], axis=1)
 
-            # Write data to csv file.
-            self.df.to_csv(output_path, sep=',', index=False, encoding='utf-8')
+        # Write data to csv file.
+        self.df.to_csv(output_path, sep=',', index=False, encoding='utf-8')
 
-            # Pandas adds "Unnamed: ..." to columns without a name.
-            # We have to remove that.
-            self.logger.linfo('Fixing headers...')
-            Validator.fix_headers(output_path)
+        # Pandas adds "Unnamed: ..." to columns without a name.
+        # We have to remove that.
+        self.logger.linfo('Fixing headers...')
+        Validator.fix_headers(output_path)
 
     def run_list(self, output_path):
         """
         The script will run in list mode. A list of responses to delete will be generated.
         """
         self.logger.linfo('Fixing columns...')
-        self.fix_token_position()
+        if self.bad_token_column:
+            self.fix_token_position()
 
         # List responses with duplicated tokens.
         self.logger.linfo('Checking responses with duplicated tokens...')
