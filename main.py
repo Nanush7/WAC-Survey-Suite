@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 """
-Copyright (c) 2022-2023 Nanush7. MIT license, see LICENSE file.
+Copyright (c) 2022-2023 Nanush7. See LICENSE file.
 """
 
 from src.log import LogWrapper

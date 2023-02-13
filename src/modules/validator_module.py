@@ -1,16 +1,19 @@
-from src.modules import BaseModule
+"""
+Copyright (c) 2022-2023 Nanush7. See LICENSE file.
+"""
+from src.modules.builder import BaseModule
 
 
 class Validator(BaseModule):
-    name = 'Validator'
-    description = 'Plugin Description.'
 
-    def __init__(self, client, output):
+    def __init__(self, **kwargs):
         # Add anything you want here.
-        super().__init__(client, output)
+        name = "Validator"
+        description = "Validate tokens and remove duplicates."
+        super().__init__(name, description, **kwargs)
 
     def run(self) -> None:
-        pass
+        print("Hello World!")
 
     def close(self) -> None:
-        pass
+        print("Closing " + self.name)
