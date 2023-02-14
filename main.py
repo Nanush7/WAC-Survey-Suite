@@ -28,7 +28,7 @@ def main():
                      action='store_true', dest='no_warn')
     log.add_argument('-v', '--verbose',
                      help='Show debug messages', action='store_true')
-    log.add_argument('--log-file', help='Log Output to output.log',
+    log.add_argument('-l', '--log-file', help='Log Output to output.log',
                      action='store_true', dest='log_file')
     log.add_argument('--no-colors', help='Disable colored logs',
                      action='store_false', dest='no_colors')

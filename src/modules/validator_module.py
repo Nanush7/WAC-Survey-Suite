@@ -10,10 +10,11 @@ class Validator(BaseModule):
         # Add anything you want here.
         name = "Validator"
         description = "Validate tokens and remove duplicates."
-        super().__init__(name, description, **kwargs)
+        version = '1.0'
+        super().__init__(name, description, version, **kwargs)
 
     def run(self) -> None:
-        print("Hello World!")
+        print("Hello World! :D")
 
     def close(self) -> None:
         print("Closing " + self.name)

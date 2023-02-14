@@ -18,6 +18,7 @@ class CLI:
         self.modules = []
         self.file = file
         self.main_menu = builder.Menu()
+        self.mod_descriptions = []
         # Banner use only.
         self.colors = [self.out.p_blue, self.out.p_yellow, self.out.p_red, self.out.p_green]
 
@@ -34,11 +35,13 @@ class CLI:
                                                                             v{__version__}
 ''')
 
-    def _get_modules(self):
+    def _load_modules(self):
         """
-        Get modules.
+        Load modules.
         """
-        modules = []
+        self.modules = []
+        self.main_menu.remove_numbered_all()
+        builder._init()
         for module in builder.BaseModule.module_list:
             try:
                 instance = module(file=self.file, output=self.out)
@@ -47,10 +50,8 @@ class CLI:
                 self.out.l_warning(
                     f'Could not import {module} ({exc})')
             else:
-                modules.append(instance)
+                self.modules.append(instance)
                 self.main_menu.add_numbered_option(instance.name)
-
-        return modules
 
     def menu(self) -> bool:
         # Print banner and options.
@@ -64,6 +65,19 @@ class CLI:
 
         if choice == 'exit':
             return False
+        elif choice == 'd':
+            if not self.mod_descriptions:
+                self.mod_descriptions = builder.Table(
+                    ['Name', 'Description', 'Version'],
+                    [[m.name, m.description, m.version] for m in self.modules]
+                )
+            print(self.mod_descriptions)
+
+        elif choice == 'r':
+            self.out.l_info('Reloading modules...')
+            self._load_modules()
+        else:
+            self.modules[int(choice) - 1].run()
 
         return True
 
@@ -92,11 +106,11 @@ class CLI:
 
         # Get modules.
         self.out.l_info('Loading modules...')
-        self.modules = self._get_modules()
+        self._load_modules()
+        input('\nPress enter to continue...')
 
         # Run until exit.
         try:
-            input('Press enter to continue...')
             while self.menu():
                 input('Press enter to continue...')
         except KeyboardInterrupt:
