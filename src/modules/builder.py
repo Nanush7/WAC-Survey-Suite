@@ -25,10 +25,11 @@ class BaseModule(metaclass=abc.ABCMeta):
         """
         cls.module_list.append(cls)
 
-    def __init__(self, name, description, version, **kwargs):
+    def __init__(self, name, description, version, authors: str | None = None, **kwargs):
         self._name = name
         self._description = description
         self._version = version
+        self._authors = authors
         self._file = kwargs['file']
         self.out = kwargs['output']
 
@@ -43,6 +44,10 @@ class BaseModule(metaclass=abc.ABCMeta):
     @property
     def version(self):
         return self._version
+
+    @property
+    def authors(self):
+        return self._authors
 
     @property
     def file(self):
@@ -164,7 +169,8 @@ class Menu:
         Display menu and prompt for choice.
         """
         # Display.
-        print(self.start, end='')
+        print(self.start)
+
         print('Options:')
         for key, option in self._string_options.items():
             # Check if option is enabled.
@@ -183,11 +189,12 @@ class Menu:
             else:
                 c = 'X'
             print(f'>{c} [{index}] {option[0]}')
-        print(self.end, end='')
+
+        print(self.end)
 
         # Prompt until choice is valid.
         while True:
-            choice = input('\n--> ')
+            choice = input('--> ')
             ret = None
 
             # Go back.
@@ -232,7 +239,7 @@ class Table(PrettyTable):
     Generate ASCII tables.
     This class is a PrettyTable wrapper.
     """
-    def __init__(self, fields: list, rows=()):
+    def __init__(self, fields: list[str], rows=()):
         """
         fields: A list of columns to add to the table.
         rows: A list of lists.

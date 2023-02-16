@@ -16,7 +16,9 @@ class CLI:
     def __init__(self, file, output):
         self.out = output
         self.modules = []
-        self.file = file
+        self.file = None
+        if file and os.path.isfile(file):
+            self.file = open(file, 'r')
         self.main_menu = builder.Menu()
         self.mod_descriptions = []
         # Banner use only.
@@ -53,6 +55,21 @@ class CLI:
                 self.modules.append(instance)
                 self.main_menu.add_numbered_option(instance.name)
 
+    def _file_manager(self):
+        """
+        Open file and save it to self.file.
+        """
+        print('Please, provide the absolute or relative path to the survey CSV file.')
+        file = input('File path: ')
+        if os.path.isfile(file):
+            try:
+                self.file.close()
+            except AttributeError:  # This will happen if self.file is still None.
+                pass
+            self.file = open(file, 'r')
+        else:
+            self.out.l_error('File not found.')
+
     def menu(self) -> bool:
         # Print banner and options.
         self.out.clear()
@@ -64,20 +81,25 @@ class CLI:
         choice = self.main_menu.display()
 
         if choice == 'exit':
+            for m in self.modules:
+                m.close()
             return False
         elif choice == 'd':
             if not self.mod_descriptions:
                 self.mod_descriptions = builder.Table(
-                    ['Name', 'Description', 'Version'],
-                    [[m.name, m.description, m.version] for m in self.modules]
+                    ['Name', 'Description', 'Version', 'Author(s)'],
+                    [[m.name, m.description, m.version, m.authors] for m in self.modules]
                 )
             print(self.mod_descriptions)
 
         elif choice == 'r':
             self.out.l_info('Reloading modules...')
             self._load_modules()
-        else:
+        elif choice:
             self.modules[int(choice) - 1].run()
+        elif choice is not None:
+            # Some callback returned something, but it was not caught.
+            self.out.l_warning('Please, report this message to the developer.')
 
         return True
 
@@ -90,16 +112,10 @@ class CLI:
     under certain conditions. See LICENSE file for more details.
 ''')
 
-        # Check if file was provided.
-        if self.file is None:
-            print('Please, provide the absolute or relative path to the survey CSV file.')
-            self.file = input('File path: ')
-            if not os.path.isfile(self.file):
-                self.out.l_error('File not found.')
-                exit(1)
+        while self.file is None:
+            self._file_manager()
 
-        self.file = open(self.file, 'r')
-
+        self.main_menu.add_string_option('c', 'change the current file.', self._file_manager)
         self.main_menu.add_string_option('d', 'write the description of each module')
         self.main_menu.add_string_option('r', 'reload modules')
         self.main_menu.add_string_option('exit', 'close modules and exit')
@@ -112,9 +128,11 @@ class CLI:
         # Run until exit.
         try:
             while self.menu():
-                input('Press enter to continue...')
+                input('\nPress enter to continue...')
         except KeyboardInterrupt:
             print('\nKeyboard interrupt caught! Closing...')
         finally:
-            # If the file was not opened, it shouldn't reach this line anyway.
-            self.file.close()
+            try:
+                self.file.close()
+            except AttributeError:
+                pass
