@@ -19,7 +19,7 @@ TEAMS = {
     'WAT': 'WCA Archive Team'
 }
 TOPIC_CODES = {
-    '0': 'All',
+    '0': 'General Questions',
     '1': 'Communication and Transparency',
     '2': 'Regulations and Events',
     '7': 'Incidents and Future Regulations',
@@ -46,3 +46,6 @@ TEAM_DEFAULT_INTEREST = {
     'WSOT': [],
     'WAT': []
 }
+
+# Columns to exclude.
+SURVEYMONKEY_COLUMNS = [0, 8]
