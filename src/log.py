@@ -84,20 +84,20 @@ class LogWrapper:
         print(Fore.RED + message, end=end)
 
     def p_yellow(self, message, end='\n'):
-        print(Fore.LIGHTYELLOW_EX + message, end=end)
+        print(Fore.YELLOW + message, end=end)
 
     def p_green(self, message, end='\n'):
         print(Fore.LIGHTGREEN_EX + message, end=end)
 
     def p_blue(self, message, end='\n'):
-        print(Fore.LIGHTBLUE_EX + message, end=end)
+        print(Fore.BLUE + message, end=end)
 
 
 class _CustomFormatter(logging.Formatter):
     """Logging Formatter to add colors"""
 
-    yellow = Fore.LIGHTYELLOW_EX
-    red = Fore.LIGHTRED_EX
+    yellow = Fore.YELLOW
+    red = Fore.RED
     reset = Fore.RESET + Back.RESET
     format = "[%(levelname)s] %(message)s"
 

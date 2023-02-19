@@ -53,6 +53,11 @@ class BaseModule(metaclass=abc.ABCMeta):
     def file(self):
         return self._file
 
+    @file.setter
+    def file(self, value):
+        self.on_file_change(value)
+        self._file = value
+
     @abc.abstractmethod
     def run(self) -> None:
         """
@@ -60,9 +65,16 @@ class BaseModule(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
+    def on_file_change(self, file):
+        """
+        This method will be executed when changing the file from the main menu.
+        Note that this will be executed BEFORE changing the self.file attribute.
+        """
+        pass
+
     def close(self) -> None:
         """
-        This method will be closed upon closing the cli.
+        This method will be closed upon exiting the suite.
         """
         pass
 

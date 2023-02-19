@@ -37,13 +37,18 @@ class CLI:
                                                                             v{__version__}
 ''')
 
-    def _load_modules(self):
+    def _load_modules(self, reload=False):
         """
         Load modules.
         """
         self.modules = []
         self.main_menu.remove_numbered_all()
         builder._init()
+        if reload:
+            # Pandas problem workaround.
+            f_name = self.file.name
+            self.file.close()
+            self.file = open(f_name, 'r')
         for module in builder.BaseModule.module_list:
             try:
                 instance = module(file=self.file, output=self.out)
@@ -57,7 +62,7 @@ class CLI:
 
     def _file_manager(self):
         """
-        Open file and save it to self.file.
+        Open file, save it to self.file and change it in all modules.
         """
         print('Please, provide the absolute or relative path to the survey CSV file.')
         file = input('File path: ')
@@ -67,6 +72,8 @@ class CLI:
             except AttributeError:  # This will happen if self.file is still None.
                 pass
             self.file = open(file, 'r')
+            for module in self.modules:
+                module.file = self.file
         else:
             self.out.l_error('File not found.')
 
@@ -94,8 +101,9 @@ class CLI:
 
         elif choice == 'r':
             self.out.l_info('Reloading modules...')
-            self._load_modules()
+            self._load_modules(True)
         elif choice:
+            self.out.clear()
             self.modules[int(choice) - 1].run()
         elif choice is not None:
             # Some callback returned something, but it was not caught.
