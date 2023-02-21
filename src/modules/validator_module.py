@@ -177,7 +177,7 @@ class Validator(builder.BaseModule):
 
         # Empty token fields are detected as duplicates and invalid tokens.
         # Remove the duplicates.
-        clean_to_delete = [elem for index, elem in enumerate(self.to_delete) if not elem in self.to_delete[:index]]
+        clean_to_delete = [elem for index, elem in enumerate(self.to_delete) if elem not in self.to_delete[:index]]
 
         with open(output_path, 'w') as f:
             for elem in clean_to_delete:
