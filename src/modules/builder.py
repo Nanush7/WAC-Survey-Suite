@@ -32,6 +32,7 @@ class BaseModule(metaclass=abc.ABCMeta):
         self._authors = authors
         self._file = kwargs['file']
         self.out = kwargs['output']
+        self.startup_completed = False
 
     @property
     def name(self):
@@ -51,10 +52,12 @@ class BaseModule(metaclass=abc.ABCMeta):
 
     @property
     def file(self):
+        self._file.seek(0)  # Pandas problem workaround.
         return self._file
 
     @file.setter
     def file(self, value):
+        value.seek(0)  # Pandas problem workaround.
         self.on_file_change(value)
         self._file = value
 
@@ -71,6 +74,13 @@ class BaseModule(metaclass=abc.ABCMeta):
         Note that this will be executed BEFORE changing the self.file attribute.
         """
         pass
+
+    def startup(self) -> bool:
+        """
+        This method will be executed right before running the module for the first time.
+        It must return True if the setup was successful, otherwise return False.
+        """
+        return True
 
     def close(self) -> None:
         """

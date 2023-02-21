@@ -37,18 +37,13 @@ class CLI:
                                                                             v{__version__}
 ''')
 
-    def _load_modules(self, reload=False):
+    def _load_modules(self):
         """
         Load modules.
         """
         self.modules = []
         self.main_menu.remove_numbered_all()
         builder._init()
-        if reload:
-            # Pandas problem workaround.
-            f_name = self.file.name
-            self.file.close()
-            self.file = open(f_name, 'r')
         for module in builder.BaseModule.module_list:
             try:
                 instance = module(file=self.file, output=self.out)
@@ -101,10 +96,18 @@ class CLI:
 
         elif choice == 'r':
             self.out.l_info('Reloading modules...')
-            self._load_modules(True)
+            self._load_modules()
         elif choice:
             self.out.clear()
-            self.modules[int(choice) - 1].run()
+            module = self.modules[int(choice) - 1]
+            # Don't run module if setup fails.
+            if not module.startup_completed and module.startup():  # startup returns True if successful.
+                module.startup_completed = True
+            if module.startup_completed:
+                self.out.clear()
+                module.run()
+            else:
+                self.out.l_error('Startup failed.')
         elif choice is not None:
             # Some callback returned something, but it was not caught.
             self.out.l_warning('Please, report this message to the developer.')
