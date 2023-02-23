@@ -8,3 +8,7 @@ To know about installation and usage read the project [wiki](https://github.com/
 ### Preview
 
 ![MainScreen](https://user-images.githubusercontent.com/59543882/221023140-6f460d3e-ef1b-4aff-afec-5eda4290c9c0.png)
+
+### Module Collaboration
+
+If you want to add your module to this repo, please open a pull request on the `develop` branch.
