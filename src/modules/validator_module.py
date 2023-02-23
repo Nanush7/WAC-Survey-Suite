@@ -186,7 +186,7 @@ class Validator(builder.BaseModule):
 
         self.deleted = len(clean_to_delete)
 
-    def is_valid(self, token: str) -> bool:  # TODO: Eliminar acá.
+    def is_valid(self, token: str) -> bool:
         """
         Check if the token is valid and delete the response if not.
         """
