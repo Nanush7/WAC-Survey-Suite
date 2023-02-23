@@ -84,7 +84,8 @@ class CLI:
 
         if choice == 'exit':
             for m in self.modules:
-                m.close()
+                if m.startup_completed:
+                    m.close()
             return False
         elif choice == 'd':
             if not self.mod_descriptions:

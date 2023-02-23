@@ -144,7 +144,7 @@ class Menu:
 
     def remove_numbered_option(self, index: int):
         """
-        Remove menu option with the given index (note that index starts at 1).
+        Remove menu option with the provided index (index starts at 1).
         """
         if not isinstance(index, int) or index not in self._numbered_options:
             raise ModuleError('Cannot remove option, invalid index')
@@ -162,7 +162,7 @@ class Menu:
         """
         self._string_options = {}
 
-    def enable_option(self, name=None, index=None):
+    def enable_option(self, name=None, index=None) -> None:
         """
         Enable a previously disabled menu option.
         Raises: ModuleError if name or index is invalid.
@@ -292,7 +292,7 @@ def query_yes_no(question, default=None) -> bool:
     "question" is a string that is presented to the user.
     "default" is the presumed answer if the user just hits <Enter>.
         It must be "yes", "no" or None (meaning
-        an answer is required of the user).
+        an answer is required).
 
     The "answer" return value is True for "yes" or False for "no".
     """
@@ -304,11 +304,10 @@ def query_yes_no(question, default=None) -> bool:
     elif default == 'no':
         prompt = ' [y/N] '
     else:
-        raise ModuleError(f'Invalid default answer "{default}"')
+        raise ModuleError(f'Invalid default answer "{default}".')
 
     while True:
-        print(question + prompt)
-        choice = input().lower()
+        choice = input(question + prompt).lower()
         if default is not None and choice == '':
             return valid[default]
         elif choice in valid:
