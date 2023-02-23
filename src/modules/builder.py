@@ -190,6 +190,9 @@ class Menu:
         """
         Display menu and prompt for choice.
         """
+        if len(self._string_options) == 0 and len(self._numbered_options) == 0:
+            raise ModuleError('No options to display.')
+
         # Display.
         print(self.start)
 
