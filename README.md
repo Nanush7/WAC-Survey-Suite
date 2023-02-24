@@ -1,4 +1,10 @@
 # WAC Survey Suite
+
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/Nanush7/WAC-Survey-Suite?color=orange&label=version)
+![GitHub](https://img.shields.io/github/license/Nanush7/WAC-Survey-Suite?color=green)
+![Python version](https://img.shields.io/badge/python-%3E%3D3.8-blue?logo=Python)
+![Linux](https://img.shields.io/badge/platform-Linux-yellow?logo=Linux)
+
 Modular suite to work with surveys. Designed for the WCA Advisory Council.
 
 See LICENSE file.
