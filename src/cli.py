@@ -5,7 +5,7 @@ import os.path
 from random import randint
 from src.modules import builder
 
-__version__ = '1.0'
+__version__ = '1.1.0'
 
 
 class CLI:
