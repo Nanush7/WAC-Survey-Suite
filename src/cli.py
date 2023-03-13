@@ -1,7 +1,7 @@
 """
 Copyright (c) 2022-2023 Nanush7. See LICENSE file.
 """
-import os.path
+from os import path, listdir
 from random import randint
 from src.modules import builder
 
@@ -13,12 +13,11 @@ class CLI:
     Interactive CLI Class.
     """
 
-    def __init__(self, file, output):
+    def __init__(self, directory, output):
         self.out = output
         self.modules = []
-        self.file = None
-        if file and os.path.isfile(file):
-            self.file = open(file, 'r')
+        self.files = []
+        self._file_manager(directory)  # Open CSV files and save them to self.files.
         self.main_menu = builder.Menu()
         self.mod_descriptions = []
         # Banner use only.
@@ -46,7 +45,7 @@ class CLI:
         builder._init()
         for module in builder.BaseModule.module_list:
             try:
-                instance = module(file=self.file, output=self.out)
+                instance = module(files=self.files, output=self.out)
                 self.out.p_green(f'[OK] {instance.name} loaded.')
             except Exception as exc:
                 self.out.l_warning(
@@ -55,30 +54,42 @@ class CLI:
                 self.modules.append(instance)
                 self.main_menu.add_numbered_option(instance.name)
 
-    def _file_manager(self):
+    def _file_manager(self, directory=None):
         """
         Open file, save it to self.file and change it in all modules.
         """
-        print('Please, provide the absolute or relative path to the survey CSV file.')
-        file = input('File path: ')
-        if os.path.isfile(file):
+        if not directory:  # Ask for dir path.
+            print('Please, provide the absolute or relative path to the directory containing the CSV files.')
+            directory = input('Directory path: ')
+
+        if not path.isdir(directory):  # Fail if not found.
+            self.out.l_error('Directory not found.')
+            return
+
+        for file in self.files:  # Close files if already opened.
             try:
-                self.file.close()
-            except AttributeError:  # This will happen if self.file is still None.
+                file.close()
+            except AttributeError:
                 pass
-            self.file = open(file, 'r')
-            for module in self.modules:
-                module.file = self.file
-        else:
-            self.out.l_error('File not found.')
+
+        self.files = []
+        for filename in listdir(directory):
+            if filename.endswith('.csv'):
+                self.files.append(open(f'{directory}/{filename}', 'r'))
+        for module in self.modules:
+            module.files = self.files
 
     def menu(self) -> bool:
         # Print banner and options.
         self.out.clear()
         self.banner()
 
-        print('    File => ', end='')
-        self.out.p_blue(self.file.name, end='\n\n')
+        # Display active filenames.
+        print('    Files => ', end='')
+        self.out.p_blue(self.files[0].name, end='')
+        for file in self.files[1:]:
+            self.out.p_blue(f', {file.name}', end='')
+        print('\n')
 
         choice = self.main_menu.display()
 
@@ -86,7 +97,7 @@ class CLI:
             for m in self.modules:
                 if m.startup_completed:
                     m.close()
-            return False
+            return False  # False kills the main loop.
         elif choice == 'd':
             if not self.mod_descriptions:
                 self.mod_descriptions = builder.Table(
@@ -124,10 +135,10 @@ class CLI:
     under certain conditions. See LICENSE file for more details.
 ''')
 
-        while self.file is None:
+        while len(self.files) == 0:
             self._file_manager()
 
-        self.main_menu.add_string_option('c', 'change the current file.', self._file_manager)
+        self.main_menu.add_string_option('c', 'change the current directory.', self._file_manager)
         self.main_menu.add_string_option('d', 'write the description of each module')
         self.main_menu.add_string_option('r', 'reload modules')
         self.main_menu.add_string_option('exit', 'close modules and exit')
@@ -144,7 +155,8 @@ class CLI:
         except KeyboardInterrupt:
             print('\nKeyboard interrupt caught! Closing...')
         finally:
-            try:
-                self.file.close()
-            except AttributeError:
-                pass
+            for file in self.files:
+                try:
+                    file.close()
+                except AttributeError:
+                    pass

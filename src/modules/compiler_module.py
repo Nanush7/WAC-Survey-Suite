@@ -27,7 +27,7 @@ class Compiler(builder.BaseModule):
         self.team_topics = metadata.TEAM_DEFAULT_INTEREST
         self.team_columns = {}
         self.must_delete_columns = metadata.MUST_DELETE_COLUMNS
-        self.questions_by_index = {}
+        self.questions_by_topic = {}
 
         # Menus.
         self.main_menu = builder.Menu(extra_start=f'\nCompiler module v{self.version} by {self.authors}.\n',
@@ -41,8 +41,8 @@ class Compiler(builder.BaseModule):
         # Jinja2 scheme template.
         self.jinja = Environment(loader=FileSystemLoader('src/metadata/'))
 
-        # Pandas DataFrame.
-        self.df = pandas.read_csv(self.file)
+        # Pandas DataFrames.
+        self.dataframes = [pandas.read_csv(file) for file in self.files]
 
     def startup(self) -> bool:
         # Topics table.
@@ -62,32 +62,66 @@ class Compiler(builder.BaseModule):
             from src.metadata import scheme
             self.team_topics = scheme.TEAM_INTERESTS
             self.team_columns = scheme.TEAM_COLUMNS
+            self.questions_by_topic = scheme.TOPIC_QUESTIONS
         except ImportError:
             # Disable the Compile option until scheme is generated.
             self.main_menu.disable_option(name='compile')
 
         # interests_menu setup.
-        self.interests_menu.add_string_option('a', 'assign a topic')
-        self.interests_menu.add_string_option('r', 'remove a topic')
-        self.interests_menu.add_string_option('codes', 'display topic codes')
-        self.interests_menu.add_string_option('list', 'display topics by team')
+        self.interests_menu.add_string_option('a', 'assign a topic.')
+        self.interests_menu.add_string_option('r', 'remove a topic.')
+        self.interests_menu.add_string_option('codes', 'display topic codes.')
+        self.interests_menu.add_string_option('list', 'display topics by team.')
 
         # set_additional_questions menu.
-        self.additional_questions_menu.add_string_option('a', 'add a question')
-        self.additional_questions_menu.add_string_option('r', 'remove a question')
-        self.additional_questions_menu.add_string_option('questions', 'show all questions by index.')
+        self.additional_questions_menu.add_string_option('a', 'add a question.')
+        self.additional_questions_menu.add_string_option('r', 'remove a question.')
+        self.additional_questions_menu.add_string_option('questions', 'display all questions by topic.')
 
         # Drop unwanted columns.
-        for column in self.df.columns:
-            if column in self.must_delete_columns:
-                self.df.drop(column, axis=1)
+        for survey in self.dataframes:
+            for column_label in survey:
+                if column_label in self.must_delete_columns:
+                    survey.drop(column_label, axis=1)
 
         # Get all questions.
-        for index, column in enumerate(self.df.columns):
-            if metadata.PANDAS_UNNAMED not in column and metadata.SEPARATOR_QUESTION not in column:
-                self.questions_by_index[index] = column
+        if not self.questions_by_topic:
+            self.questions_by_topic = self._get_topic_questions()
 
         return True
+
+    def _get_topic_questions(self) -> dict[str, list[str]]:
+        """
+        Get questions by topic.
+        """
+        questions = {}
+        topic = 0
+        for survey in self.dataframes:  # Iterate over each survey.
+            for index, column_label in enumerate(survey.columns):  # Iterate over columns.
+                match = search(r'^\d+\)', column_label)  # Search for "number)".
+                if match:
+                    topic = match.group()[:-1]  # [:-1] removes the parenthesis from the matched code.
+                elif metadata.PANDAS_UNNAMED not in column_label and column_label not in questions[topic]:
+                    questions[topic].append(column_label)
+
+        return questions
+
+    def _get_question_range(self):
+        """
+        Get question column range.
+        """
+        """
+        for index, column_label in enumerate(survey.columns):  # Iterate over columns.
+            match = search(r'^\d+\)', column_label)  # Search for "number)".
+            if match:
+                end = index
+                questions[topic] = [*range(start, end)]  # * unpacks the range to a list.
+                topic = match.group()[:-1]  # [:-1] removes the parenthesis from the matched code.
+                start = index
+        # Edge case: last code does not end by finding another code.
+        questions[topic] = [*range(start, start + 1)]  # Should be only one column: "Other comments".
+        """
+        raise NotImplemented
 
     def _get_interests_table(self):
         """
@@ -106,28 +140,15 @@ class Compiler(builder.BaseModule):
         """
         Questions by topic.
         """
-
-
-    def _get_topic_columns(self) -> dict[str, list[int]]:
-        code_columns = {}
-        start = 0
-        code = '0'  # Start with "General Questions" code.
-        for index, column_label in enumerate(self.df.columns):
-            match = search(r'^\d+\)', column_label)  # Search for "number)".
-            if match:
-                end = index
-                code_columns[code] = [*range(start, end)]  # * unpacks the range to a list.
-                code = match.group()[:-1]  # [:-1] removes the parenthesis from the matched code.
-                start = index
-        # Edge case: last code does not end by finding another code.
-        code_columns[code] = [*range(start, start+1)]  # Should be only one column: "Other comments".
-
-        return code_columns
+        for topic, questions in self.questions_by_topic.items():
+            print(f'----{metadata.TOPIC_CODES[topic]}----')
+            for index, question in enumerate(questions):
+                print(f'{index} > {question}')
 
     def _generate_team_columns(self) -> None:
         self.team_columns = {}
         # Get columns for each topic.
-        self.topic_columns = self._get_topic_columns()
+        self.topic_columns = self._get_topic_questions()
 
         # Assign columns to teams based on topics.
         for team in self.teams.keys():
@@ -165,6 +186,7 @@ class Compiler(builder.BaseModule):
             elif choice == 'back':
                 break
             else:
+                break
                 team = input('Initials of the team/committee to edit: ').upper()
                 selected_questions = input(
                     'Indexes of the questions to add/remove separated with commas: ').replace(' ', '').split(',')
@@ -185,7 +207,6 @@ class Compiler(builder.BaseModule):
                         self.team_topics[team].remove(question_index)
 
                 # Update team columns.
-                # TODO: Hacer que el compilador busque el rango de cada pregunta solo: no añadir todas las columnas para cada equipo.
                 self.out.p_green('Done.')
 
     def set_interests(self):
@@ -221,8 +242,8 @@ class Compiler(builder.BaseModule):
 
                 self.out.p_green('Done.')
 
-    def on_file_change(self, file):
-        self.df = pandas.read_csv(file)
+    def on_file_change(self, files):
+        self.dataframes = [pandas.read_csv(file) for file in files]
 
     def run(self):
         while self.main_menu.display() != 'back':

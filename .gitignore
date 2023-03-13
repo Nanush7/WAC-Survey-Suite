@@ -134,3 +134,6 @@ dmypy.json
 *.csv
 token_list.txt
 tokens.txt
+.DS_Store
+hashes.wac
+csv/
