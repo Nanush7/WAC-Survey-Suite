@@ -20,7 +20,7 @@ def main():
     log = parser.add_argument_group(title='Log options')
 
     # Arguments.
-    general.add_argument('-f', '--file', help='Path to survey CSV file.', type=str, default=None)
+    general.add_argument('-d', '--dir', help='Path to survey CSV directory.', type=str, default=None)
 
     log.add_argument(
         '-q', '--quiet', help='Do not log anything', action='store_true')
@@ -36,9 +36,9 @@ def main():
     args = parser.parse_args()
 
     # Validate args.
-    if args.file:
-        if not path.isfile(args.file):
-            parser.error('File not found.')
+    if args.dir:
+        if not path.isdir(args.dir):
+            parser.error('Directory not found.')
 
     if args.quiet and args.verbose:
         parser.error('Cannot use quiet and verbose at the same time.')
@@ -53,7 +53,7 @@ def main():
     }
     logger = LogWrapper(log_config)
 
-    cli_class = CLI(args.file, logger)
+    cli_class = CLI(args.dir, logger)
     cli_class.run()
 
 
