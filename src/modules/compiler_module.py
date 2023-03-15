@@ -2,11 +2,15 @@
 Compiler Module.
 """
 import pandas
-from re import search
+from re import search, sub
+from os import path, makedirs
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
-from src.modules import builder
+from src.modules import builder, exceptions
 from src.metadata import metadata
+
+
+COMPILED_DIR = 'Compiled'
 
 
 class Compiler(builder.BaseModule):
@@ -27,13 +31,12 @@ class Compiler(builder.BaseModule):
         self.team_topics = metadata.TEAM_DEFAULT_INTEREST
         self.team_columns = {}
         self.must_delete_columns = metadata.MUST_DELETE_COLUMNS
-        self.questions_by_topic = {}
+        self.questions_by_survey = {}
 
         # Menus.
         self.main_menu = builder.Menu(extra_start=f'\nCompiler module v{self.version} by {self.authors}.\n',
                                       back_option=True)
         self.interests_menu = builder.Menu(back_option=True)
-        self.additional_questions_menu = builder.Menu(back_option=True)
 
         # Tables.
         self.topics_table = builder.Table(['Code', 'Description'])
@@ -42,7 +45,7 @@ class Compiler(builder.BaseModule):
         self.jinja = Environment(loader=FileSystemLoader('src/metadata/'))
 
         # Pandas DataFrames.
-        self.dataframes = [pandas.read_csv(file) for file in self.files]
+        self.dataframes = self.get_dataframes()
 
     def startup(self) -> bool:
         # Topics table.
@@ -52,17 +55,14 @@ class Compiler(builder.BaseModule):
 
         # Main menu setup.
         self.main_menu.add_numbered_option('Set topics by team/committee.', callback=self.set_interests)
-        self.main_menu.add_numbered_option('Set additional questions by team/committee.',
-                                           callback=self.set_additional_questions)
         self.main_menu.add_numbered_option('Generate scheme.', callback=self.generate_scheme_file)
-        self.main_menu.add_string_option('compile', 'run compiler.', callback=self.compile)
+        self.main_menu.add_string_option('compile', 'compile questions for a team/committee.', callback=self.compile)
 
         # Try to import scheme.
         try:
             from src.metadata import scheme
             self.team_topics = scheme.TEAM_INTERESTS
-            self.team_columns = scheme.TEAM_COLUMNS
-            self.questions_by_topic = scheme.TOPIC_QUESTIONS
+            self.questions_by_survey = scheme.SURVEYS
         except ImportError:
             # Disable the Compile option until scheme is generated.
             self.main_menu.disable_option(name='compile')
@@ -73,57 +73,76 @@ class Compiler(builder.BaseModule):
         self.interests_menu.add_string_option('codes', 'display topic codes.')
         self.interests_menu.add_string_option('list', 'display topics by team.')
 
-        # set_additional_questions menu.
-        self.additional_questions_menu.add_string_option('a', 'add a question.')
-        self.additional_questions_menu.add_string_option('r', 'remove a question.')
-        self.additional_questions_menu.add_string_option('questions', 'display all questions by topic.')
-
         # Drop unwanted columns.
-        for survey in self.dataframes:
-            for column_label in survey:
-                if column_label in self.must_delete_columns:
-                    survey.drop(column_label, axis=1)
+        self.out.l_info('Dropping unwanted columns...')
+        for survey in self.dataframes.values():
+            for column_label in self.must_delete_columns:
+                try:
+                    survey.drop(column_label, axis=1, inplace=True)
+                except KeyError:
+                    self.out.l_warning(f'{column_label} not found. Skipped.')
 
-        # Get all questions.
-        if not self.questions_by_topic:
-            self.questions_by_topic = self._get_topic_questions()
+        # Get questions by topic for each survey.
+        if not self.questions_by_survey:
+            for name, survey in self.dataframes.items():
+                self.questions_by_survey[name] = self.get_topic_questions(survey)
+
+        # Create CSV output directory.
+        if not path.exists(COMPILED_DIR):
+            makedirs(COMPILED_DIR)
 
         return True
 
-    def _get_topic_questions(self) -> dict[str, list[str]]:
+    def get_dataframes(self):
+        df = {}
+        for file in self.files:
+            df[file.name] = pandas.read_csv(file)
+
+        return df
+
+    def get_topic_questions(self, survey) -> dict[str, list[str]]:
         """
         Get questions by topic.
         """
         questions = {}
-        topic = 0
-        for survey in self.dataframes:  # Iterate over each survey.
-            for index, column_label in enumerate(survey.columns):  # Iterate over columns.
-                match = search(r'^\d+\)', column_label)  # Search for "number)".
-                if match:
-                    topic = match.group()[:-1]  # [:-1] removes the parenthesis from the matched code.
-                elif metadata.PANDAS_UNNAMED not in column_label and column_label not in questions[topic]:
-                    questions[topic].append(column_label)
+        topic = '0'
+        for code in self.topic_codes.keys():
+            questions[code] = []
+        for index, column_label in enumerate(survey.columns):
+            match = search(r'^\d+\)', column_label)  # Search for "number)".
+            if match and match.group()[:-1] == '6':  # TODO: Abstract "Other Comments" code. Edge case.
+                topic = '6'
+                survey.rename(columns=({column_label: column_label.replace('6) ', '')}), inplace=True)
+                questions[topic].append(column_label.replace('6) ', ''))
+            elif match:
+                topic = match.group()[:-1]  # [:-1] removes the parenthesis from the matched code.
+            elif metadata.PANDAS_UNNAMED not in column_label:
+                questions[topic].append(column_label)
 
         return questions
 
-    def _get_question_range(self):
+    def get_question_range(self, survey, question: str) -> tuple[int, int]:
         """
         Get question column range.
         """
-        """
-        for index, column_label in enumerate(survey.columns):  # Iterate over columns.
-            match = search(r'^\d+\)', column_label)  # Search for "number)".
-            if match:
-                end = index
-                questions[topic] = [*range(start, end)]  # * unpacks the range to a list.
-                topic = match.group()[:-1]  # [:-1] removes the parenthesis from the matched code.
+        start = None
+        end = None
+        columns = survey.columns
+        for index, column_label in enumerate(columns):
+            if column_label == question:
                 start = index
-        # Edge case: last code does not end by finding another code.
-        questions[topic] = [*range(start, start + 1)]  # Should be only one column: "Other comments".
-        """
-        raise NotImplemented
+                end = start + 1
+                while end < len(columns) and metadata.PANDAS_UNNAMED in columns[end]:
+                    end += 1
+                break
 
-    def _get_interests_table(self):
+        if start is None or end is None:
+            self.out.l_error('Critical error.')
+            raise exceptions.ModuleError('Critical error trying to locate question. Please, open an issue.')
+
+        return start, end
+
+    def get_interests_table(self):
         """
         Topics by team.
         """
@@ -136,86 +155,153 @@ class Compiler(builder.BaseModule):
         interests_table.align = 'l'
         return interests_table
 
-    def _print_questions(self):
+    def print_questions(self):
         """
         Questions by topic.
         """
-        for topic, questions in self.questions_by_topic.items():
+        for topic, questions in self.questions_by_survey.items():
             print(f'----{metadata.TOPIC_CODES[topic]}----')
             for index, question in enumerate(questions):
                 print(f'{index} > {question}')
 
-    def _generate_team_columns(self) -> None:
-        self.team_columns = {}
-        # Get columns for each topic.
-        self.topic_columns = self._get_topic_questions()
-
-        # Assign columns to teams based on topics.
-        for team in self.teams.keys():
-            self.team_columns[team] = []
-            for code, columns in self.topic_columns.items():
-                if code in self.team_topics[team]:
-                    self.team_columns[team].extend(columns)
-
     def generate_scheme_file(self):
         template = self.jinja.get_template('scheme.py.jinja')
-
-        self._generate_team_columns()
 
         scheme = template.render(date=datetime.now(),
                                  version=self.version,
                                  teams=self.team_topics,
-                                 topics=self.topic_columns,
-                                 team_columns=self.team_columns)
+                                 surveys=self.questions_by_survey)
 
         with open('src/metadata/scheme.py', 'w') as f:
             f.write(scheme)
         self.out.p_green('scheme.py generated successfully.')
         self.main_menu.enable_option(name='compile')
 
+    def get_additional_questions(self, survey: str, team: str) -> list[str]:
+        """
+        Get questions selected manually.
+        """
+        additional_questions = []
+        available_questions = []
+        self.out.p_blue('\nAdditional questions available:')
+        for topic, questions in self.questions_by_survey[survey].items():
+            # Ignore questions from an already selected topic.
+            if topic in self.team_topics[team] or len(questions) == 0:
+                continue
+
+            # Display available questions for current topic.
+            self.out.p_yellow(f'\n<<< {self.topic_codes[topic]} >>>\n')
+            for question in questions:
+                print(f'[{len(available_questions)+1}] {question}')
+                available_questions.append(question)
+
+        selected_questions = input('\nQuestions to add, separated by commas: ').replace(' ', '').split(',')
+
+        for num in selected_questions:
+            try:
+                index = int(num)
+            except ValueError:
+                self.out.l_error(f'Invalid input.')
+                return []
+
+            if index <= 0 or index > len(available_questions):
+                self.out.l_error(f'Invalid index: {index}')
+                return []
+
+            additional_questions.append(available_questions[index-1])
+
+        return additional_questions
+
     def compile(self):
-        pass
+        # Show teams.
+        print('Teams/committees available:')
+        for team in self.teams.keys():
+            print(f'- {team}')
 
-    def set_additional_questions(self):
-        # Update team columns with current selected topics.
-        while True:
-            # Display menu and prompt for choice.
-            choice = self.additional_questions_menu.display()
-            if choice == 'questions':
-                self._print_questions()
-            elif choice == 'back':
-                break
-            else:
-                break
-                team = input('Initials of the team/committee to edit: ').upper()
-                selected_questions = input(
-                    'Indexes of the questions to add/remove separated with commas: ').replace(' ', '').split(',')
+        # Select a team.
+        team = input('\nSelect a team to compile: ')
+        if team not in self.teams.keys():
+            self.out.l_error('Team not found.')
+            return 'error'
 
-                # Check team.
-                if team not in self.teams.keys():
-                    self.out.l_error('Team not found.')
-                    return 'error'
+        # The procedure will be done for each survey.
+        for title, survey in self.dataframes.items():
 
-                for question_index in selected_questions:
-                    if question_index not in self.questions_by_index.keys():  # Check topic.
-                        self.out.l_error(f'Invalid index: {question_index}')
-                        return 'error'
+            self.out.p_green(f'\nSummary for {title}\n')
+            self.out.p_blue('Questions to compile (based on selected topics):\n')
+            team_questions = []
+            for topic in self.team_topics[team]:
+                for question in self.questions_by_survey[title][topic]:
+                    team_questions.append(question)
+                    print(f'- {question}')
 
-                    if choice == 'a' and question_index not in self.team_columns[team]:  # Add.
-                        self.team_topics[team].append(question_index)
-                    elif choice == 'r' and question_index in self.team_columns[team]:  # Remove.
-                        self.team_topics[team].remove(question_index)
+            additional_questions = []
+            while True:
+                # Display additional questions.
+                if len(additional_questions) != 0:
+                    self.out.p_blue(f'\nAdditional questions to compile ({title}):\n')
+                    for question in additional_questions:
+                        print(f'- {question}')
 
-                # Update team columns.
-                self.out.p_green('Done.')
+                if builder.query_yes_no('\nDo you want to add additional questions?', default='no'):
+                    additional_questions.extend(self.get_additional_questions(title, team))
+                else:
+                    break
+
+            all_questions = additional_questions + team_questions
+
+            # Compile.
+            self.out.clear()
+            self.out.l_info(f'Compiling {len(all_questions)} questions...')
+            question_indexes = []
+            for question in all_questions:
+                question_range = self.get_question_range(survey, question)
+                question_indexes.extend([*range(question_range[0], question_range[1])])
+
+            compiled_df = survey.iloc[:, question_indexes]
+
+            # Save to file.
+            filename = f'{team}_{title.split("/")[-1]}'
+            compiled_df.to_csv(f'{COMPILED_DIR}/{filename}', sep=',', index=False, encoding='utf-8')
+
+            # Remove "Unnamed: ..." from column headers.
+            with open(f'{COMPILED_DIR}/{filename}', 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            content = sub(r'(Unnamed: )[0-9]+', '', content)
+
+            # Write fixed content.
+            with open(f'{COMPILED_DIR}/{filename}', 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            self.out.l_info(f'Compiled CSV saved to {COMPILED_DIR}/{filename}.')
+
+            # Generate report.
+            template = self.jinja.get_template('report.txt.jinja')
+
+            report = template.render(date=datetime.now(),
+                                     version=self.version,
+                                     team=team,
+                                     title=title,
+                                     filename=filename,
+                                     total_responses=len(survey)-1,
+                                     team_questions=team_questions,
+                                     additional_questions=additional_questions)
+
+            with open(f'{COMPILED_DIR}/report_{team}.txt', 'a') as f:
+                f.write(report)
+            self.out.l_info(f'Report saved to {COMPILED_DIR}/report_{team}.txt')
+            self.out.p_green(f'{title} compiled successfully!')
+
+        self.out.p_green('All surveys compiled successfully!')
 
     def set_interests(self):
-        print(self._get_interests_table())
+        print(self.get_interests_table())
         while True:
             # Display menu and prompt for choice.
             choice = self.interests_menu.display()
             if choice == 'list':
-                print(self._get_interests_table())
+                print(self.get_interests_table())
             elif choice == 'codes':
                 print(self.topics_table)
             elif choice == 'back':
@@ -223,7 +309,7 @@ class Compiler(builder.BaseModule):
             else:
                 team = input('Initials of the team/committee to edit: ').upper()
                 selected_codes = input(
-                    'Code of the topics to add/remove separated with commas: ').replace(' ', '').split(',')
+                    'Code of the topics to add/remove separated by commas: ').replace(' ', '').split(',')
 
                 # Check team.
                 if team not in self.teams.keys():
@@ -243,7 +329,7 @@ class Compiler(builder.BaseModule):
                 self.out.p_green('Done.')
 
     def on_file_change(self, files):
-        self.dataframes = [pandas.read_csv(file) for file in files]
+        self.dataframes = self.get_dataframes()
 
     def run(self):
         while self.main_menu.display() != 'back':
