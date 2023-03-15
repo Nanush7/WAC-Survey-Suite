@@ -1,0 +1,16 @@
+-----------------------------------------------------------------------------------------------------------------------
+<<< Report for {{ title }} - {{ team }} (generated on {{ date }} using Compiler v{{ version }}) >>>
+
+RECOMMENDATION: Copy/paste to PDF report.
+
+File: {{ filename }}
+Total responses after validation: {{ total_responses }}
+{% if team_questions|length > 0 %}
+<<< Questions included by topic >>>
+{% for question in team_questions %}{{ question+'\n' }}{% endfor %}
+{% endif %}
+{% if additional_questions|length > 0 %}
+<<< Additional questions >>
+{% for question in additional_questions %}{{ question+'\n' }}{% endfor %}
+{% endif %}
+{# EOF #}

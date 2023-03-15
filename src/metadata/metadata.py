@@ -33,7 +33,7 @@ TOPIC_CODES = {
 # WEAT and WAC excluded.
 TEAM_DEFAULT_INTEREST = {
     'BOARD': [],
-    'WCT': ['1'],
+    'WCT': ['1', '3'],
     'WCAT': [],
     'WDC': ['4'],
     'WEC': [],
@@ -42,10 +42,27 @@ TEAM_DEFAULT_INTEREST = {
     'WQAC': [],
     'WRC': ['2', '7'],
     'WRT': [],
-    'WST': ['3', '5'],
+    'WST': ['5'],
     'WSOT': [],
     'WAT': []
 }
 
-# Columns to exclude.
-SURVEYMONKEY_COLUMNS = [0, 8]
+# Columns that must be deleted for privacy and other reasons.
+MUST_DELETE_COLUMNS = [
+    'Respondent ID',
+    'Collector ID',
+    'Start Date',
+    'End Date',
+    'IP Address',
+    'Email Address',
+    'First Name',
+    'Last Name',
+    'Custom Data 1',
+    'wca_token'
+]
+
+# String added by Pandas in blank column labels.
+PANDAS_UNNAMED = 'Unnamed:'
+
+# Questions to separate topics.
+SEPARATOR_QUESTION = 'Would you like to leave your feedback on this topic?'

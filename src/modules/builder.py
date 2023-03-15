@@ -30,7 +30,7 @@ class BaseModule(metaclass=abc.ABCMeta):
         self._description = description
         self._version = version
         self._authors = authors
-        self._file = kwargs['file']
+        self._files = kwargs['files']
         self.out = kwargs['output']
         self.startup_completed = False
 
@@ -51,15 +51,17 @@ class BaseModule(metaclass=abc.ABCMeta):
         return self._authors
 
     @property
-    def file(self):
-        self._file.seek(0)  # Pandas problem workaround.
-        return self._file
+    def files(self):
+        for file in self._files:
+            file.seek(0)  # Pandas problem workaround.
+        return self._files
 
-    @file.setter
-    def file(self, value):
-        value.seek(0)  # Pandas problem workaround.
+    @files.setter
+    def files(self, value):
+        for file in value:
+            file.seek(0)  # Pandas problem workaround.
         self.on_file_change(value)
-        self._file = value
+        self._files = value
 
     @abc.abstractmethod
     def run(self) -> None:
