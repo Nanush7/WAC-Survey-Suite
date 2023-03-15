@@ -64,8 +64,7 @@ class Compiler(builder.BaseModule):
             self.team_topics = scheme.TEAM_INTERESTS
             self.questions_by_survey = scheme.SURVEYS
         except ImportError:
-            # Disable the Compile option until scheme is generated.
-            self.main_menu.disable_option(name='compile')
+            pass
 
         # interests_menu setup.
         self.interests_menu.add_string_option('a', 'assign a topic.')
@@ -175,7 +174,6 @@ class Compiler(builder.BaseModule):
         with open('src/metadata/scheme.py', 'w') as f:
             f.write(scheme)
         self.out.p_green('scheme.py generated successfully.')
-        self.main_menu.enable_option(name='compile')
 
     def get_additional_questions(self, survey: str, team: str) -> list[str]:
         """
