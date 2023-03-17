@@ -25,7 +25,7 @@ class BaseModule(metaclass=abc.ABCMeta):
         """
         cls.module_list.append(cls)
 
-    def __init__(self, name, description, version, authors: str | None = None, **kwargs):
+    def __init__(self, name, description, version, authors: str = None, **kwargs):
         self._name = name
         self._description = description
         self._version = version
@@ -266,7 +266,7 @@ class Table(PrettyTable):
     Generate ASCII tables.
     This class is a PrettyTable wrapper.
     """
-    def __init__(self, fields: list[str], rows=()):
+    def __init__(self, fields, rows=()):
         """
         fields: A list of columns to add to the table.
         rows: A list of lists.

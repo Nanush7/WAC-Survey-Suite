@@ -32,6 +32,7 @@ class Compiler(builder.BaseModule):
         self.team_columns = {}
         self.must_delete_columns = metadata.MUST_DELETE_COLUMNS
         self.questions_by_survey = {}
+        self.dataframes = {}
 
         # Menus.
         self.main_menu = builder.Menu(extra_start=f'\nCompiler module v{self.version} by {self.authors}.\n',
@@ -44,10 +45,10 @@ class Compiler(builder.BaseModule):
         # Jinja2 scheme template.
         self.jinja = Environment(loader=FileSystemLoader('src/metadata/'))
 
-        # Pandas DataFrames.
-        self.dataframes = self.get_dataframes()
-
     def startup(self) -> bool:
+        # Pandas DataFrames.
+        self.dataframes = Compiler.get_dataframes(self.files)
+
         # Topics table.
         for code, description in self.topic_codes.items():
             self.topics_table.add_row([code, description])
@@ -92,16 +93,18 @@ class Compiler(builder.BaseModule):
 
         return True
 
-    def get_dataframes(self):
+    @staticmethod
+    def get_dataframes(files):
         df = {}
-        for file in self.files:
+        for file in files:
             df[file.name] = pandas.read_csv(file)
 
         return df
 
-    def get_topic_questions(self, survey) -> dict[str, list[str]]:
+    def get_topic_questions(self, survey):
         """
         Get questions by topic.
+        :returns: dict[str, list[str]]
         """
         questions = {}
         topic = '0'
@@ -120,9 +123,10 @@ class Compiler(builder.BaseModule):
 
         return questions
 
-    def get_question_range(self, survey, question: str) -> tuple[int, int]:
+    def get_question_range(self, survey, question: str):
         """
         Get question column range.
+        :returns: tuple[int, int]
         """
         start = None
         end = None
@@ -175,9 +179,10 @@ class Compiler(builder.BaseModule):
             f.write(scheme)
         self.out.p_green('scheme.py generated successfully.')
 
-    def get_additional_questions(self, survey: str, team: str) -> list[str]:
+    def get_additional_questions(self, survey: str, team: str):
         """
         Get questions selected manually.
+        :returns: list[str]
         """
         additional_questions = []
         available_questions = []
@@ -327,7 +332,8 @@ class Compiler(builder.BaseModule):
                 self.out.p_green('Done.')
 
     def on_file_change(self, files):
-        self.dataframes = self.get_dataframes()
+        if self.startup_completed:
+            self.dataframes = Compiler.get_dataframes(files)
 
     def run(self):
         while self.main_menu.display() != 'back':

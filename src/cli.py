@@ -5,7 +5,7 @@ from os import path, listdir
 from random import randint
 from src.modules import builder
 
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 
 
 class CLI:
