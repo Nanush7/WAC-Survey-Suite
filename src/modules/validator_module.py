@@ -79,7 +79,9 @@ class Validator(builder.BaseModule):
         """
         df = {}
         for file in files:
-            df[file.name] = pandas.read_csv(file, converters={i: str for i in range(Validator.MAX_COLUMNS)})
+            df[file.name] = pandas.read_csv(file,
+                                            encoding='utf-8',
+                                            converters={i: str for i in range(Validator.MAX_COLUMNS)})
 
         return df
 

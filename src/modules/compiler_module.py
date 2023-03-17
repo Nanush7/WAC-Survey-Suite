@@ -97,7 +97,7 @@ class Compiler(builder.BaseModule):
     def get_dataframes(files):
         df = {}
         for file in files:
-            df[file.name] = pandas.read_csv(file)
+            df[file.name] = pandas.read_csv(file, encoding='utf-8')
 
         return df
 

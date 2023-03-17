@@ -75,7 +75,7 @@ class CLI:
         self.files = []
         for filename in listdir(directory):
             if filename.endswith('.csv'):
-                self.files.append(open(f'{directory}/{filename}', 'r'))
+                self.files.append(open(f'{directory}/{filename}', 'r', encoding='utf-8'))
         for module in self.modules:
             module.files = self.files
 
