@@ -59,7 +59,7 @@ class Validator(builder.BaseModule):
         except KeyboardInterrupt:
             return False
 
-        with open(self.tokens_path, 'r') as f:
+        with open(self.tokens_path, 'r', encoding='utf-8') as f:
             self.token_list = f.read().split('\n')
 
         # Build menu.
@@ -207,7 +207,7 @@ class Validator(builder.BaseModule):
         # Remove the duplicates.
         clean_to_delete = [elem for index, elem in enumerate(self.to_delete) if elem not in self.to_delete[:index]]
 
-        with open(output_path, 'w') as f:
+        with open(output_path, 'w', encoding='utf-8') as f:
             for elem in clean_to_delete:
                 f.write(elem + '\n')
         self.out.l_info(f'File saved as {output_path}.')

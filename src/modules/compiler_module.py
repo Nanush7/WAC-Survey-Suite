@@ -114,8 +114,7 @@ class Compiler(builder.BaseModule):
             match = search(r'^\d+\)', column_label)  # Search for "number)".
             if match and match.group()[:-1] == '6':  # TODO: Abstract "Other Comments" code. Edge case.
                 topic = '6'
-                survey.rename(columns=({column_label: column_label.replace('6) ', '')}), inplace=True)
-                questions[topic].append(column_label.replace('6) ', ''))
+                questions[topic].append(column_label)
             elif match:
                 topic = match.group()[:-1]  # [:-1] removes the parenthesis from the matched code.
             elif metadata.PANDAS_UNNAMED not in column_label:
@@ -175,7 +174,7 @@ class Compiler(builder.BaseModule):
                                  teams=self.team_topics,
                                  surveys=self.questions_by_survey)
 
-        with open('src/metadata/scheme.py', 'w') as f:
+        with open('src/metadata/scheme.py', 'w', encoding='utf-8') as f:
             f.write(scheme)
         self.out.p_green('scheme.py generated successfully.')
 
@@ -291,7 +290,7 @@ class Compiler(builder.BaseModule):
                                      team_questions=team_questions,
                                      additional_questions=additional_questions)
 
-            with open(f'{COMPILED_DIR}/report_{team}.txt', 'a') as f:
+            with open(f'{COMPILED_DIR}/report_{team}.txt', 'a', encoding='utf-8') as f:
                 f.write(report)
             self.out.l_info(f'Report saved to {COMPILED_DIR}/report_{team}.txt')
             self.out.p_green(f'{title} compiled successfully!')
