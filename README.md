@@ -13,7 +13,8 @@ To know about installation and usage read the project [wiki](https://github.com/
 
 ### Preview
 
-![MainScreen](https://user-images.githubusercontent.com/59543882/221023140-6f460d3e-ef1b-4aff-afec-5eda4290c9c0.png)
+![MainScreen](https://user-images.githubusercontent.com/59543882/231914163-a85bc1d4-e81a-40eb-b33e-57235bb27dac.png)
+
 
 ### Module Collaboration
 
